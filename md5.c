@@ -6,7 +6,6 @@
 //typedef unsigned char      uint8_t;
 //typedef unsigned short     uint16_t;
 //typedef unsigned int       uint32_t;
-#define LEFTROTATE(x, c) (((x) << (c)) | ((x) >> (32 - (c))))
 
 const uint32_t T[64] = {
     0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
@@ -89,8 +88,8 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
         // return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
         // break chunk into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
         for (i = 0; i < 16; i++)
-            X[i] = (uint32_t)msg[j + i * 4] | ((uint32_t)msg[j + i * 4 + 1] << 8) | ((uint32_t)msg[j + i * 4 + 2] << 16) | ((uint32_t)(msg + j + i * 4 + 3) << 24);
-
+            //X[i] = (uint32_t)msg[j + i * 4] | ((uint32_t)msg[j + i * 4 + 1] << 8) | ((uint32_t)msg[j + i * 4 + 2] << 16) | ((uint32_t)(msg + j + i * 4 + 3) << 24);
+            X[i] = to_int32(msg + j + i*4);
         // Initialize hash value for this chunk:
         a = h0;
         b = h1;
@@ -125,7 +124,7 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
             temp = d;
             d = c;
             c = b;
-            b = b + ((a + g + X[k] + T[i]) << s[i]) | ((a + g + X[k] + T[i]) >> (32 - s[i]));
+            b = b + (((a + g + X[k] + T[i]) << s[i]) | ((a + g + X[k] + T[i]) >> (32 - s[i])));
             a = temp;
         }
 
