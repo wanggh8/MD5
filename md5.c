@@ -26,8 +26,7 @@ const uint32_t T[64] = {
     0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
     0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
 
-
-void div(uint32_t val, uint8_t *bytes)
+void toByte(uint32_t val, uint8_t *bytes)
 {
     bytes[0] = (uint8_t)val;
     bytes[1] = (uint8_t)(val >> 8);
@@ -38,48 +37,50 @@ void div(uint32_t val, uint8_t *bytes)
 void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
 {
 
-    uint32_t h0, h1, h2, h3;
     uint8_t *msg = NULL;
     size_t new_len, offset;
     uint32_t X[16];
-    uint32_t a, b, c, d, i, k, g, temp;
+    uint32_t a, b, c, d;    // 寄存器
+    uint32_t i, k, g, temp; // 总结变量
 
-    // 初始化寄存器
-    h0 = 0x67452301;
-    h1 = 0xefcdab89;
-    h2 = 0x98badcfe;
-    h3 = 0x10325476;
+    // 储存初值
+    uint32_t res0 = 0x67452301;
+    uint32_t res1 = 0xefcdab89;
+    uint32_t res2 = 0x98badcfe;
+    uint32_t res3 = 0x10325476;
 
-    //Pre-processing:
-    
     // 获取长度，并申请新的字符串，单位是字节数
-    for (new_len = initial_len + 1; new_len % (512 / 8) != 448 / 8; new_len++);
+    for (new_len = initial_len + 1; new_len % (512 / 8) != 448 / 8; new_len++)
+        ;
     msg = (uint8_t *)malloc(new_len + 8);
     memcpy(msg, initial_msg, initial_len);
 
     // 添加一个1和足够的0
     msg[initial_len] = 0x80;
     for (offset = initial_len + 1; offset < new_len; offset++)
+    {
         msg[offset] = 0;
+    }
 
     // k的后64位添加到消息尾部
-    div(initial_len * 8, msg + new_len);
-    div(initial_len >> (32-2), msg + new_len + 4);
+    toByte(initial_len * 8, msg + new_len);
+    toByte(initial_len >> (32 - 2), msg + new_len + 4);
 
     // 对512比特字符分段处理
     for (int j = 0; j < new_len; j += 64)
     {
         // 从内存中读入32位字符串
-        for (i = 0; i < 16; i++){
-            uint8_t *bytes = msg + j + i*4;
+        for (i = 0; i < 16; i++)
+        {
+            uint8_t *bytes = msg + j + i * 4;
             X[i] = (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
         }
-            
+
         // 寄存器初始化
-        a = h0;
-        b = h1;
-        c = h2;
-        d = h3;
+        a = res0;
+        b = res1;
+        c = res2;
+        d = res3;
 
         // 4轮循环:
         for (i = 0; i < 64; i++)
@@ -113,43 +114,37 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
             a = temp;
         }
 
-        // Add this chunk's hash to result so far:
-        h0 += a;
-        h1 += b;
-        h2 += c;
-        h3 += d;
+        // 存储结果
+        res0 += a;
+        res1 += b;
+        res2 += c;
+        res3 += d;
     }
 
-    // cleanup
+    // 释放内存
     free(msg);
 
-    //var char digest[16] := h0 append h1 append h2 append h3 //(Output is in little-endian)
-    div(h0, digest);
-    div(h1, digest + 4);
-    div(h2, digest + 8);
-    div(h3, digest + 12);
+    // 使用小端储存结果
+    toByte(res0, digest);
+    toByte(res1, digest + 4);
+    toByte(res2, digest + 8);
+    toByte(res3, digest + 12);
 }
 
 int main()
 {
-    char msg[1000000];
-    size_t len;
-    int i;
+    char msg[100000];
     uint8_t result[16];
 
     scanf("%s", msg);
-    len = strlen(msg);
+    md5((uint8_t *)msg, strlen(msg), result);
 
-    // benchmark
-    for (i = 0; i < 1000000; i++)
+    for (int i = 0; i < 16; i++)
     {
-        md5((uint8_t *)msg, len, result);
-    }
-
-    // display result
-    for (i = 0; i < 16; i++)
         printf("%2.2x", result[i]);
+    }
     puts("");
+
     system("pause");
     return 0;
 }
