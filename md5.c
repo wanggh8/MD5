@@ -3,9 +3,10 @@
 #include <string.h>
 #include <stdint.h>
 
-//typedef unsigned char      uint8_t;
-//typedef unsigned short     uint16_t;
-//typedef unsigned int       uint32_t;
+const uint32_t s[] = {7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+                      5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+                      4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+                      6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21};
 
 const uint32_t T[64] = {
     0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
@@ -25,12 +26,8 @@ const uint32_t T[64] = {
     0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
     0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
 
-const uint32_t s[] = {7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
-                      5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-                      4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
-                      6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21};
 
-void to_bytes(uint32_t val, uint8_t *bytes)
+void div(uint32_t val, uint8_t *bytes)
 {
     bytes[0] = (uint8_t)val;
     bytes[1] = (uint8_t)(val >> 8);
@@ -38,65 +35,53 @@ void to_bytes(uint32_t val, uint8_t *bytes)
     bytes[3] = (uint8_t)(val >> 24);
 }
 
-uint32_t to_int32(const uint8_t *bytes)
-{
-    return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
-}
-
 void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
 {
 
-    // These vars will contain the hash
     uint32_t h0, h1, h2, h3;
-
-    // Message (to prepare)
     uint8_t *msg = NULL;
-
     size_t new_len, offset;
     uint32_t X[16];
     uint32_t a, b, c, d, i, k, g, temp;
 
-    // Initialize variables - simple count in nibbles:
+    // 初始化寄存器
     h0 = 0x67452301;
     h1 = 0xefcdab89;
     h2 = 0x98badcfe;
     h3 = 0x10325476;
 
     //Pre-processing:
-    //append "1" bit to message
-    //append "0" bits until message length in bits ≡ 448 (mod 512)
-    //append length mod (2^64) to message
-
-    for (new_len = initial_len + 1; new_len % (512 / 8) != 448 / 8; new_len++)
-        ;
-
+    
+    // 获取长度，并申请新的字符串，单位是字节数
+    for (new_len = initial_len + 1; new_len % (512 / 8) != 448 / 8; new_len++);
     msg = (uint8_t *)malloc(new_len + 8);
     memcpy(msg, initial_msg, initial_len);
-    msg[initial_len] = 0x80; // append the "1" bit; most significant bit is "first"
+
+    // 添加一个1和足够的0
+    msg[initial_len] = 0x80;
     for (offset = initial_len + 1; offset < new_len; offset++)
-        msg[offset] = 0; // append "0" bits
+        msg[offset] = 0;
 
-    // append the len in bits at the end of the buffer.
-    to_bytes(initial_len * 8, msg + new_len);
-    // initial_len>>29 == initial_len*8>>32, but avoids overflow.
-    to_bytes(initial_len >> 29, msg + new_len + 4);
+    // k的后64位添加到消息尾部
+    div(initial_len * 8, msg + new_len);
+    div(initial_len >> (32-2), msg + new_len + 4);
 
-    // Process the message in successive 512-bit chunks:
-    //for each 512-bit chunk of message:
+    // 对512比特字符分段处理
     for (int j = 0; j < new_len; j += 64)
     {
-        // return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
-        // break chunk into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
-        for (i = 0; i < 16; i++)
-            //X[i] = (uint32_t)msg[j + i * 4] | ((uint32_t)msg[j + i * 4 + 1] << 8) | ((uint32_t)msg[j + i * 4 + 2] << 16) | ((uint32_t)(msg + j + i * 4 + 3) << 24);
-            X[i] = to_int32(msg + j + i*4);
-        // Initialize hash value for this chunk:
+        // 从内存中读入32位字符串
+        for (i = 0; i < 16; i++){
+            uint8_t *bytes = msg + j + i*4;
+            X[i] = (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) | ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
+        }
+            
+        // 寄存器初始化
         a = h0;
         b = h1;
         c = h2;
         d = h3;
 
-        // Main loop:
+        // 4轮循环:
         for (i = 0; i < 64; i++)
         {
 
@@ -120,7 +105,7 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
                 g = c ^ (b | (~d));
                 k = (7 * i) % 16;
             }
-
+            // 迭代
             temp = d;
             d = c;
             c = b;
@@ -139,10 +124,10 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
     free(msg);
 
     //var char digest[16] := h0 append h1 append h2 append h3 //(Output is in little-endian)
-    to_bytes(h0, digest);
-    to_bytes(h1, digest + 4);
-    to_bytes(h2, digest + 8);
-    to_bytes(h3, digest + 12);
+    div(h0, digest);
+    div(h1, digest + 4);
+    div(h2, digest + 8);
+    div(h3, digest + 12);
 }
 
 int main()
