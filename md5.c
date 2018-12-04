@@ -40,9 +40,9 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
     uint8_t *msg = NULL;
     size_t new_len, offset;
     uint32_t X[16];
-    uint32_t a, b, c, d;    // 寄存器
     uint32_t i, k, g, temp; // 总结变量
 
+    uint32_t a, b, c, d; // 寄存器
     // 储存初值
     uint32_t res0 = 0x67452301;
     uint32_t res1 = 0xefcdab89;
@@ -136,7 +136,7 @@ int main()
     char msg[100000];
     uint8_t result[16];
 
-    scanf("%s", msg);
+    scanf("%[^\n]", msg);
     md5((uint8_t *)msg, strlen(msg), result);
 
     for (int i = 0; i < 16; i++)
